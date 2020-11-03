@@ -35,17 +35,18 @@ export default function livereload(options = { watch: '' }) {
     }
   })
 
-  return {
+  async function inject() {
+    const port = await portPromise
+    const snippetSrc = options.clientUrl
+      ? JSON.stringify(options.clientUrl)
+      : process.env.CODESANDBOX_SSE
+      ? `'//' + (window.location.host.replace(/^([^.]+)-\\d+/,"$1").replace(/^([^.]+)/, "$1-${port}")).split(':')[0] + '/livereload.js?snipver=1&port=443'`
+      : `'//' + (window.location.host || 'localhost').split(':')[0] + ':${port}/livereload.js?snipver=1'`
+    return `(function(l, r) { if (l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = ${snippetSrc}; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(window.document);`
+  }
+
+  const plugin = {
     name: 'livereload',
-    async banner() {
-      const port = await portPromise
-      const snippetSrc = options.clientUrl
-        ? JSON.stringify(options.clientUrl)
-        : process.env.CODESANDBOX_SSE
-        ? `'//' + (window.location.host.replace(/^([^.]+)-\\d+/,"$1").replace(/^([^.]+)/, "$1-${port}")).split(':')[0] + '/livereload.js?snipver=1&port=443'`
-        : `'//' + (window.location.host || 'localhost').split(':')[0] + ':${port}/livereload.js?snipver=1'`
-      return `(function(l, r) { if (l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = ${snippetSrc}; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(window.document);`
-    },
     async generateBundle() {
       if (!enabled) {
         enabled = true
@@ -55,6 +56,14 @@ export default function livereload(options = { watch: '' }) {
       }
     },
   }
+
+  if (options.inject === 'banner' || options.inject === true || options.inject === undefined) {
+    plugin.banner = inject
+  } else if (options.inject === 'footer') {
+    plugin.footer = inject
+  }
+
+  return plugin
 }
 
 function green(text) {

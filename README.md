@@ -64,6 +64,7 @@ livereload('dist')
 livereload({
   watch: 'dist',
   verbose: false, // Disable console output
+  inject: 'footer', // Inject code at the end
 
   // other livereload options
   https: {
